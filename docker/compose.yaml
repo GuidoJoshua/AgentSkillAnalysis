@@ -1,0 +1,62 @@
+# Usage (from repo root):
+#   cp .env.example .env            # pick a model preset
+#   docker compose -f docker/compose.yaml up -d vllm
+#   docker compose -f docker/compose.yaml run --rm runner oracle --tasks offer-letter-generator
+name: skill-bottleneck
+
+services:
+  vllm:
+    image: skill-bottleneck-vllm:${VLLM_TAG:-v0.11.0}
+    build:
+      context: .
+      dockerfile: Dockerfile.vllm
+      args:
+        VLLM_TAG: ${VLLM_TAG:-v0.11.0}
+    command:
+      - --model=${MODEL}
+      - --served-model-name=${SERVED_NAME:-agent}
+      - --tensor-parallel-size=${TP:-1}
+      - --max-model-len=${MAX_MODEL_LEN:-32768}
+      - --gpu-memory-utilization=${GPU_UTIL:-0.90}
+      - --enable-auto-tool-choice
+      - --tool-call-parser=${TOOL_PARSER:-hermes}
+      # Keeps Qwen3 <think> text out of message content (agents parse content).
+      - --reasoning-parser=${REASONING_PARSER:-qwen3}
+    ports:
+      - "${VLLM_PORT:-8000}:8000"  # Harbor runs agents from the host
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+      # Personal server driver reports CUDA 12.7; CUDA 12.x minor-version compatibility
+      # lets the cu128 image run, but the container toolkit's version check must be skipped.
+      - NVIDIA_DISABLE_REQUIRE=${NVIDIA_DISABLE_REQUIRE:-0}
+    volumes:
+      - ${HF_CACHE:-~/.cache/huggingface}:/root/.cache/huggingface
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/v1/models"]
+      interval: 15s
+      timeout: 5s
+      retries: 60
+
+  runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.runner
+    environment:
+      - SB_LLM_BASE_URL=${SB_LLM_BASE_URL:-http://vllm:8000/v1}
+      - SB_LLM_MODEL=${SERVED_NAME:-agent}
+      - SB_LLM_API_KEY=${SB_LLM_API_KEY:-EMPTY}
+      - SB_TASKS_DIR=/data/skillsbench/tasks
+      - SB_RESULTS_DIR=/data/results
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../third_party/skillsbench:/data/skillsbench:ro
+      - ../results:/data/results
+      - ../configs:/app/configs:ro

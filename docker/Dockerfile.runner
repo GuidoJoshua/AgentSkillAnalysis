@@ -1,0 +1,20 @@
+# Experiment runner. Python deps are managed by uv; task sandboxes are
+# sibling containers started through the mounted Docker socket.
+FROM python:3.12-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.9.7 /uv /uvx /usr/local/bin/
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+# Install dependencies first so code edits don't invalidate this layer.
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --no-install-project --group dev
+
+COPY src ./src
+COPY tests ./tests
+RUN uv sync --group dev
+
+ENTRYPOINT ["sb"]

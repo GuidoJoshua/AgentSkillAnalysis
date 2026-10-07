@@ -1,0 +1,9 @@
+results/
+third_party/
+docker/.env
+.venv/
+__pycache__/
+*.pyc
+data/
+jobs/
+notes/

@@ -1,0 +1,19 @@
+# vLLM presets per GPU setup. Copy the chosen values into docker/.env.
+# Pick the model whose C1 (oracle) success rate is not at the floor in the pilot.
+presets:
+  rtx3090x1:        # personal server, development only
+    MODEL: Qwen/Qwen3-8B
+    TP: 1
+    MAX_MODEL_LEN: 32768
+  a100_80gx2:
+    MODEL: Qwen/Qwen3-30B-A3B-Instruct-2507
+    TP: 2
+    MAX_MODEL_LEN: 65536
+  a6000x4:
+    MODEL: Qwen/Qwen3-30B-A3B-Instruct-2507
+    TP: 4
+    MAX_MODEL_LEN: 65536
+  rtx4090x4:        # quantized; report quantization in the paper
+    MODEL: Qwen/Qwen3-30B-A3B-Instruct-2507-FP8
+    TP: 4
+    MAX_MODEL_LEN: 32768

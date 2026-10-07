@@ -1,0 +1,7 @@
+# vLLM image for drivers older than the image's CUDA (e.g. CUDA 12.7 driver vs cu128 image).
+# The bundled forward-compat libcuda only works on datacenter GPUs; on GeForce cards it
+# fails with "Error 804: forward compatibility was attempted on non supported HW".
+# Removing it falls back to the host driver via CUDA minor-version compatibility.
+ARG VLLM_TAG=v0.11.0
+FROM vllm/vllm-openai:${VLLM_TAG}
+RUN rm -rf /usr/local/cuda*/compat && ldconfig
